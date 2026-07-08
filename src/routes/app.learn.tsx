@@ -1,0 +1,91 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
+import { summarizeBid } from "@/lib/ai.functions";
+import { readMany, downloadTextAsPdf } from "@/lib/tender-utils";
+import { FileDrop } from "./app.technical";
+import { BookOpen, Download } from "lucide-react";
+
+export const Route = createFileRoute("/app/learn")({ component: LearnPage });
+
+function LearnPage() {
+  const { user, profile, refreshProfile } = useAuth();
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState("");
+
+  const active = hasActiveSubscription(profile);
+  const plan = active ? profile!.plan : profile?.free_trial_used ? "none" : "trial";
+  const limits = planLimits(plan);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || files.length === 0) return;
+    if (limits.summaries === 0) return toast.error("No summaries remaining. Upgrade your plan.");
+    setBusy(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      if ((usage?.summaries_count ?? 0) >= limits.summaries) {
+        toast.error("Daily limit reached.");
+        setBusy(false);
+        return;
+      }
+      const docsText = await readMany(files);
+      const { summary: s } = await summarizeBid({ data: { model: limits.model, docsText } });
+      setSummary(s);
+      await supabase.from("proposals").insert({
+        firebase_uid: user.uid, type: "summary",
+        title: `Bid Summary — ${files[0]?.name ?? "documents"}`,
+        content: s,
+      });
+      if (usage) {
+        await supabase.from("daily_usage").update({ summaries_count: (usage.summaries_count ?? 0) + 1 }).eq("id", usage.id);
+      } else {
+        await supabase.from("daily_usage").insert({ firebase_uid: user.uid, usage_date: today, summaries_count: 1 });
+      }
+      if (plan === "trial") {
+        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.uid);
+        await refreshProfile();
+      }
+      toast.success("Summary ready");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="teal-gradient grid h-12 w-12 place-items-center rounded-xl">
+          <BookOpen className="h-6 w-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold">Learn About Bid</h1>
+          <p className="text-sm text-muted-foreground">Upload tender documents and get a fast, structured summary.</p>
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="glass-card space-y-4 p-6">
+        <FileDrop label="Attach bid / tender documents" files={files} onChange={setFiles} />
+        <button disabled={busy || files.length === 0} className="teal-gradient teal-glow w-full rounded-full py-3 font-semibold disabled:opacity-60">
+          {busy ? "Analyzing…" : "Summarize"}
+        </button>
+      </form>
+
+      {summary && (
+        <div className="glass-card space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Summary</h3>
+            <button onClick={() => downloadTextAsPdf("Bid Summary", summary)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+              <Download className="h-4 w-4" /> Download PDF
+            </button>
+          </div>
+          <pre className="max-h-[600px] overflow-auto whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{summary}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
