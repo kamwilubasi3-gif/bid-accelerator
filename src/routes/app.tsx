@@ -14,13 +14,13 @@ export const Route = createFileRoute("/app")({
   ),
 });
 
-const NAV = [
+const NAV: Array<{ to: string; label: string; icon: React.ElementType; exact?: boolean }> = [
   { to: "/app", label: "Home", icon: Home, exact: true },
   { to: "/app/history", label: "History", icon: History },
   { to: "/app/technical", label: "Technical Proposal", icon: FileText },
   { to: "/app/financial", label: "Financial Proposal", icon: Calculator },
   { to: "/app/learn", label: "Learn About Bid", icon: BookOpen },
-] as const;
+];
 
 function AppShell() {
   const { user, loading, profile, signOut } = useAuth();
