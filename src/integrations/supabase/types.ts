@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_usage: {
+        Row: {
+          firebase_uid: string
+          id: string
+          proposals_count: number
+          summaries_count: number
+          usage_date: string
+        }
+        Insert: {
+          firebase_uid: string
+          id?: string
+          proposals_count?: number
+          summaries_count?: number
+          usage_date?: string
+        }
+        Update: {
+          firebase_uid?: string
+          id?: string
+          proposals_count?: number
+          summaries_count?: number
+          usage_date?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          deposit_id: string
+          firebase_uid: string
+          id: string
+          plan: string
+          provider: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          deposit_id: string
+          firebase_uid: string
+          id?: string
+          plan: string
+          provider?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          deposit_id?: string
+          firebase_uid?: string
+          id?: string
+          plan?: string
+          provider?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          company_address: string | null
+          company_contacts: string | null
+          company_name: string | null
+          company_reg_doc_url: string | null
+          company_reg_number: string | null
+          created_at: string
+          email: string
+          firebase_uid: string
+          free_trial_used: boolean | null
+          full_name: string | null
+          has_company: boolean | null
+          id: string
+          phone: string | null
+          plan: string
+          plan_expires_at: string | null
+          tpin: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_address?: string | null
+          company_contacts?: string | null
+          company_name?: string | null
+          company_reg_doc_url?: string | null
+          company_reg_number?: string | null
+          created_at?: string
+          email: string
+          firebase_uid: string
+          free_trial_used?: boolean | null
+          full_name?: string | null
+          has_company?: boolean | null
+          id?: string
+          phone?: string | null
+          plan?: string
+          plan_expires_at?: string | null
+          tpin?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_address?: string | null
+          company_contacts?: string | null
+          company_name?: string | null
+          company_reg_doc_url?: string | null
+          company_reg_number?: string | null
+          created_at?: string
+          email?: string
+          firebase_uid?: string
+          free_trial_used?: boolean | null
+          full_name?: string | null
+          has_company?: boolean | null
+          id?: string
+          phone?: string | null
+          plan?: string
+          plan_expires_at?: string | null
+          tpin?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      proposals: {
+        Row: {
+          content: string | null
+          created_at: string
+          file_url: string | null
+          firebase_uid: string
+          id: string
+          title: string
+          type: string
+          winning_tips: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          file_url?: string | null
+          firebase_uid: string
+          id?: string
+          title: string
+          type: string
+          winning_tips?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          file_url?: string | null
+          firebase_uid?: string
+          id?: string
+          title?: string
+          type?: string
+          winning_tips?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
