@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useAuth, hasActiveSubscription } from "@/lib/auth-context";
 import { Home, History, FileText, Calculator, BookOpen, LogOut, Menu, X, User } from "lucide-react";
@@ -20,9 +21,17 @@ const NAV: Array<{ to: string; label: string; icon: React.ElementType; exact?: b
 
 function AppShell() {
   const { user, loading, profile, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await signOut();
+    navigate({ to: "/auth", search: { mode: "login" }, replace: true });
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", search: { mode: "login" } });
@@ -75,7 +84,7 @@ function AppShell() {
               <div className="truncate text-muted-foreground">Plan: {profile?.plan ?? "none"}</div>
             </div>
           </div>
-          <button onClick={() => signOut()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent">
+          <button onClick={handleSignOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>

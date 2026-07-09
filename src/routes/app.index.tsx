@@ -36,7 +36,11 @@ function HomePage() {
     queryKey: ["proposals-count", user?.id],
     queryFn: async () => {
       if (!user) return 0;
-      const { count } = await supabase.from("proposals").select("*", { count: "exact", head: true }).eq("firebase_uid", user.id);
+      const { count } = await supabase
+        .from("proposals")
+        .select("*", { count: "exact", head: true })
+        .eq("firebase_uid", user.id)
+        .in("type", ["technical", "financial"]);
       return count ?? 0;
     },
     enabled: !!user,

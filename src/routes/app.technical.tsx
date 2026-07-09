@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
@@ -15,6 +16,7 @@ function TechnicalPage() {
 
 export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
   const { user, profile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [preparer, setPreparer] = useState(profile?.full_name ?? "");
   const [company, setCompany] = useState(profile?.company_name ?? "");
   const [address, setAddress] = useState(profile?.company_address ?? profile?.address ?? "");
@@ -75,6 +77,12 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
         await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["proposals-count", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] }),
+        queryClient.invalidateQueries({ queryKey: ["proposals", user.id] }),
+      ]);
 
       setResult({ content, winning_tips, title });
       toast.success("Proposal generated!");

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/app/learn")({ component: LearnPage });
 
 function LearnPage() {
   const { user, profile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
@@ -50,6 +52,10 @@ function LearnPage() {
         await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] }),
+        queryClient.invalidateQueries({ queryKey: ["proposals", user.id] }),
+      ]);
       toast.success("Summary ready");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed");
