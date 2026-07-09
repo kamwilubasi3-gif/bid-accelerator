@@ -1,19 +1,13 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AuthProvider, useAuth, hasActiveSubscription } from "@/lib/auth-context";
+import { useAuth, hasActiveSubscription } from "@/lib/auth-context";
 import { Home, History, FileText, Calculator, BookOpen, LogOut, Menu, X, User } from "lucide-react";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { Toaster } from "sonner";
 
 const logoSrc = "/tender-pro-icon-192.png";
 
 export const Route = createFileRoute("/app")({
-  component: () => (
-    <AuthProvider>
-      <AppShell />
-      <Toaster position="top-right" richColors theme="dark" />
-    </AuthProvider>
-  ),
+  component: AppShell,
 });
 
 const NAV: Array<{ to: string; label: string; icon: React.ElementType; exact?: boolean }> = [
