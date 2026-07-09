@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
@@ -15,6 +16,7 @@ function TechnicalPage() {
 
 export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
   const { user, profile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [preparer, setPreparer] = useState(profile?.full_name ?? "");
   const [company, setCompany] = useState(profile?.company_name ?? "");
   const [address, setAddress] = useState(profile?.company_address ?? profile?.address ?? "");
@@ -42,7 +44,7 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.id).eq("usage_date", today).maybeSingle();
       if ((usage?.proposals_count ?? 0) >= limits.proposals) {
         toast.error("Daily limit reached.");
         setBusy(false);
@@ -62,19 +64,25 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
       const title = `${type === "technical" ? "Technical" : "Financial"} Proposal — ${company || preparer}`;
 
       await supabase.from("proposals").insert({
-        firebase_uid: user.uid, type, title, content, winning_tips,
+        firebase_uid: user.id, type, title, content, winning_tips,
       });
 
       if (usage) {
         await supabase.from("daily_usage").update({ proposals_count: (usage.proposals_count ?? 0) + 1 }).eq("id", usage.id);
       } else {
-        await supabase.from("daily_usage").insert({ firebase_uid: user.uid, usage_date: today, proposals_count: 1 });
+        await supabase.from("daily_usage").insert({ firebase_uid: user.id, usage_date: today, proposals_count: 1 });
       }
 
       if (plan === "trial") {
-        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.uid);
+        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["proposals-count", user.id] }),
+        queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] }),
+        queryClient.invalidateQueries({ queryKey: ["proposals", user.id] }),
+      ]);
 
       setResult({ content, winning_tips, title });
       toast.success("Proposal generated!");

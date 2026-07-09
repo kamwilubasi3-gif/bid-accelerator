@@ -1,17 +1,14 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { AuthProvider, useAuth, hasActiveSubscription } from "@/lib/auth-context";
+import { useAuth, hasActiveSubscription } from "@/lib/auth-context";
 import { Home, History, FileText, Calculator, BookOpen, LogOut, Menu, X, User } from "lucide-react";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
-import { Toaster } from "sonner";
+
+const logoSrc = "/tender-pro-icon-192.png";
 
 export const Route = createFileRoute("/app")({
-  component: () => (
-    <AuthProvider>
-      <AppShell />
-      <Toaster position="top-right" richColors theme="dark" />
-    </AuthProvider>
-  ),
+  component: AppShell,
 });
 
 const NAV: Array<{ to: string; label: string; icon: React.ElementType; exact?: boolean }> = [
@@ -24,9 +21,17 @@ const NAV: Array<{ to: string; label: string; icon: React.ElementType; exact?: b
 
 function AppShell() {
   const { user, loading, profile, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await signOut();
+    navigate({ to: "/auth", search: { mode: "login" }, replace: true });
+  };
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", search: { mode: "login" } });
@@ -50,7 +55,7 @@ function AppShell() {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-sidebar border-r border-sidebar-border p-4 transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="mb-6 flex items-center justify-between">
           <Link to="/app" className="flex items-center gap-2 font-bold">
-            <span className="teal-gradient grid h-9 w-9 place-items-center rounded-lg text-sm">TP</span>
+            <img src={logoSrc} alt="Tender Pro logo" className="h-10 w-10 rounded-xl" />
             Tender Pro
           </Link>
           <button className="lg:hidden" onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
@@ -79,7 +84,7 @@ function AppShell() {
               <div className="truncate text-muted-foreground">Plan: {profile?.plan ?? "none"}</div>
             </div>
           </div>
-          <button onClick={() => signOut()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent">
+          <button onClick={handleSignOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
@@ -90,6 +95,7 @@ function AppShell() {
       <main className="flex-1 min-w-0">
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/70 p-4 backdrop-blur-md lg:hidden">
           <button onClick={() => setOpen(true)}><Menu className="h-6 w-6" /></button>
+          <img src={logoSrc} alt="Tender Pro logo" className="h-8 w-8 rounded-lg" />
           <span className="font-semibold">Tender Pro</span>
         </header>
         <div className="p-4 md:p-8">

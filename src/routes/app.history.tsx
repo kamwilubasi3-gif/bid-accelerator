@@ -10,9 +10,9 @@ export const Route = createFileRoute("/app/history")({ component: HistoryPage })
 function HistoryPage() {
   const { user } = useAuth();
   const q = useQuery({
-    queryKey: ["proposals", user?.uid],
+    queryKey: ["proposals", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("proposals").select("*").eq("firebase_uid", user!.uid).order("created_at", { ascending: false });
+      const { data } = await supabase.from("proposals").select("*").eq("firebase_uid", user!.id).order("created_at", { ascending: false });
       return data ?? [];
     },
     enabled: !!user,

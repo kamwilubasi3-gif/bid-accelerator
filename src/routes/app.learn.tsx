@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/app/learn")({ component: LearnPage });
 
 function LearnPage() {
   const { user, profile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
@@ -27,7 +29,7 @@ function LearnPage() {
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.id).eq("usage_date", today).maybeSingle();
       if ((usage?.summaries_count ?? 0) >= limits.summaries) {
         toast.error("Daily limit reached.");
         setBusy(false);
@@ -37,19 +39,23 @@ function LearnPage() {
       const { summary: s } = await summarizeBid({ data: { model: limits.model, docsText } });
       setSummary(s);
       await supabase.from("proposals").insert({
-        firebase_uid: user.uid, type: "summary",
+        firebase_uid: user.id, type: "summary",
         title: `Bid Summary — ${files[0]?.name ?? "documents"}`,
         content: s,
       });
       if (usage) {
         await supabase.from("daily_usage").update({ summaries_count: (usage.summaries_count ?? 0) + 1 }).eq("id", usage.id);
       } else {
-        await supabase.from("daily_usage").insert({ firebase_uid: user.uid, usage_date: today, summaries_count: 1 });
+        await supabase.from("daily_usage").insert({ firebase_uid: user.id, usage_date: today, summaries_count: 1 });
       }
       if (plan === "trial") {
-        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.uid);
+        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] }),
+        queryClient.invalidateQueries({ queryKey: ["proposals", user.id] }),
+      ]);
       toast.success("Summary ready");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed");

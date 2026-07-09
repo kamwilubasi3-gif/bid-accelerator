@@ -8,8 +8,10 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
+import { AuthProvider } from "../lib/auth-context";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -20,7 +22,7 @@ function NotFoundComponent() {
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist.</p>
         <div className="mt-6">
-          <Link to="/" className="teal-gradient inline-flex items-center rounded-full px-6 py-2 text-sm font-semibold">Go home</Link>
+          <Link to="/auth" search={{ mode: "login" }} className="teal-gradient inline-flex items-center rounded-full px-6 py-2 text-sm font-semibold">Go to login</Link>
         </div>
       </div>
     </div>
@@ -62,7 +64,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/tender-pro-icon-192.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/tender-pro-icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
@@ -74,11 +77,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <head>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head suppressHydrationWarning>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -90,7 +93,10 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AuthProvider>
+        <Outlet />
+        <Toaster position="top-right" richColors theme="dark" />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

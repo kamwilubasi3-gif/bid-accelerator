@@ -1,28 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
-
-const PAWAPAY_BASE = "https://api.sandbox.pawapay.io";
-
-function svc() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-}
-
-const CORRESPONDENTS: Record<string, string> = {
-  airtel: "AIRTEL_ZMB",
-  mtn: "MTN_ZMB",
-  zamtel: "ZAMTEL_ZMB",
-};
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const initiateDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: {
-    firebase_uid: string;
     plan: "basic" | "pro" | "premium";
     provider: "airtel" | "mtn" | "zamtel";
     phone: string;
   }) => d)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const token = process.env.PAWAPAY_API_TOKEN;
     if (!token) throw new Error("Missing PAWAPAY_API_TOKEN");
+    const pawapayBase = "https://api.sandbox.pawapay.io";
+    const correspondents: Record<string, string> = {
+      airtel: "AIRTEL_ZMB",
+      mtn: "MTN_ZMB",
+      zamtel: "ZAMTEL_ZMB",
+    };
 
     const amounts = { basic: 220, pro: 500, premium: 1500 } as const;
     const amount = amounts[data.plan];
@@ -36,13 +30,13 @@ export const initiateDeposit = createServerFn({ method: "POST" })
       depositId,
       amount: String(amount),
       currency: "ZMW",
-      correspondent: CORRESPONDENTS[data.provider],
+      correspondent: correspondents[data.provider],
       payer: { type: "MSISDN", address: { value: msisdn } },
       customerTimestamp: new Date().toISOString(),
       statementDescription: "TenderPro",
     };
 
-    const res = await fetch(`${PAWAPAY_BASE}/deposits`, {
+    const res = await fetch(`${pawapayBase}/deposits`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -54,8 +48,8 @@ export const initiateDeposit = createServerFn({ method: "POST" })
     let json: Record<string, unknown> = {};
     try { json = JSON.parse(text); } catch { /* ignore */ }
 
-    await svc().from("payments").insert({
-      firebase_uid: data.firebase_uid,
+    await context.supabase.from("payments").insert({
+      firebase_uid: context.userId,
       deposit_id: depositId,
       plan: data.plan,
       amount,
@@ -68,21 +62,22 @@ export const initiateDeposit = createServerFn({ method: "POST" })
   });
 
 export const checkDeposit = createServerFn({ method: "POST" })
-  .inputValidator((d: { depositId: string; firebase_uid: string }) => d)
-  .handler(async ({ data }) => {
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { depositId: string }) => d)
+  .handler(async ({ data, context }) => {
     const token = process.env.PAWAPAY_API_TOKEN;
-    const res = await fetch(`${PAWAPAY_BASE}/deposits/${data.depositId}`, {
+    const pawapayBase = "https://api.sandbox.pawapay.io";
+    const res = await fetch(`${pawapayBase}/deposits/${data.depositId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const arr = (await res.json()) as Array<{ status?: string; depositId?: string }>;
     const record = Array.isArray(arr) ? arr[0] : (arr as { status?: string });
     const status = record?.status ?? "UNKNOWN";
 
-    const s = svc();
-    await s.from("payments").update({ status }).eq("deposit_id", data.depositId);
+    await context.supabase.from("payments").update({ status }).eq("deposit_id", data.depositId);
 
     if (status === "COMPLETED") {
-      const { data: payment } = await s
+      const { data: payment } = await context.supabase
         .from("payments")
         .select("plan")
         .eq("deposit_id", data.depositId)
@@ -90,10 +85,10 @@ export const checkDeposit = createServerFn({ method: "POST" })
       const plan = (payment?.plan as string) ?? "basic";
       const expires = new Date();
       expires.setDate(expires.getDate() + 30);
-      await s
+      await context.supabase
         .from("profiles")
         .update({ plan, plan_expires_at: expires.toISOString(), free_trial_used: true })
-        .eq("firebase_uid", data.firebase_uid);
+        .eq("firebase_uid", context.userId);
     }
     return { status };
   });
