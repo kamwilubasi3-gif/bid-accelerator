@@ -44,8 +44,8 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-100 px-6 py-10 text-slate-900">
-      <form onSubmit={submit} className="w-full max-w-md rounded-3xl border border-slate-300 bg-slate-200 p-8 shadow-2xl">
+    <div className="grid min-h-screen place-items-center bg-slate-200 px-6 py-10 text-slate-900">
+      <form onSubmit={submit} className="w-full max-w-md rounded-3xl border border-slate-400/50 bg-slate-300 p-8 shadow-2xl">
         <img src="/tender-pro-icon-192.png" alt="Tender Pro logo" className="mx-auto mb-4 h-16 w-16 rounded-2xl" />
         <h1 className="text-center text-3xl font-black tracking-tight">RESET PASSWORD</h1>
         <p className="mt-1 text-center text-sm text-slate-600">Create a new Tender Pro password.</p>
@@ -62,7 +62,7 @@ function ResetPasswordPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="new password"
-            className="w-full rounded-full border border-slate-300 bg-slate-100 px-5 py-3 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-full border border-slate-400/50 bg-slate-200 px-5 py-3 text-sm outline-none focus:border-teal-500 focus:bg-slate-100"
             required
           />
           <input
@@ -70,7 +70,7 @@ function ResetPasswordPage() {
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
             placeholder="confirm password"
-            className="w-full rounded-full border border-slate-300 bg-slate-100 px-5 py-3 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-full border border-slate-400/50 bg-slate-200 px-5 py-3 text-sm outline-none focus:border-teal-500 focus:bg-slate-100"
             required
           />
           <button disabled={busy} className="w-full rounded-full bg-teal-500 py-3 font-semibold text-slate-950 shadow-lg shadow-teal-500/25 disabled:opacity-60">

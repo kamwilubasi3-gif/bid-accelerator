@@ -27,7 +27,7 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center bg-slate-100 p-8 lg:p-16">
+      <div className="flex items-center justify-center bg-slate-200 p-8 lg:p-16">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <img src={logoSrc} alt="Tender Pro logo" className="mx-auto mb-4 h-16 w-16 rounded-2xl shadow-lg" />
@@ -57,7 +57,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-full border border-slate-300 bg-slate-200 px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-teal-500 focus:bg-slate-50 ${props.className ?? ""}`}
+      className={`w-full rounded-full border border-slate-400/50 bg-slate-300 px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-600 focus:border-teal-500 focus:bg-slate-100 ${props.className ?? ""}`}
     />
   );
 }
@@ -205,7 +205,7 @@ function SignUpForm() {
       if (error) throw error;
 
       let regDocUrl: string | null = null;
-      if (data.user && regDoc && hasCompany === "yes") {
+      if (data.session && data.user && regDoc && hasCompany === "yes") {
         const path = `${data.user.id}/registration-${Date.now()}-${regDoc.name}`;
         const { error: uploadError } = await supabase.storage.from("documents").upload(path, regDoc);
         if (!uploadError) {
@@ -263,7 +263,7 @@ function SignUpForm() {
               <Input placeholder="TPIN" value={tpin} onChange={(e) => setTpin(e.target.value)} />
               <Input placeholder="Company contacts" value={companyContacts} onChange={(e) => setCompanyContacts(e.target.value)} />
               <Input placeholder="Company address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} />
-              <label className="block cursor-pointer rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600 hover:bg-slate-100">
+              <label className="block cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-200 p-4 text-center text-sm text-slate-700 hover:bg-slate-100">
                 {regDoc ? regDoc.name : "Click to attach company registration document"}
                 <input type="file" className="hidden" onChange={(e) => setRegDoc(e.target.files?.[0] ?? null)} />
               </label>
