@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { User } from "firebase/auth";
-import { getFirebase } from "./firebase";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Profile = {
@@ -16,6 +15,7 @@ export type Profile = {
   tpin: string | null;
   company_contacts: string | null;
   company_address: string | null;
+  company_reg_doc_url?: string | null;
   plan: string;
   plan_expires_at: string | null;
   free_trial_used: boolean | null;
@@ -42,38 +42,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = async (uid: string) => {
-    const { data } = await supabase
+  const loadProfile = async (authUser: User) => {
+    const metadata = authUser.user_metadata as Partial<Profile> & { name?: string };
+    const defaults = {
+      firebase_uid: authUser.id,
+      email: authUser.email ?? "",
+      full_name: metadata.full_name ?? metadata.name ?? null,
+      phone: metadata.phone ?? null,
+      address: metadata.address ?? null,
+      has_company: metadata.has_company ?? false,
+      company_name: metadata.company_name ?? null,
+      company_reg_number: metadata.company_reg_number ?? null,
+      tpin: metadata.tpin ?? null,
+      company_contacts: metadata.company_contacts ?? null,
+      company_address: metadata.company_address ?? null,
+      company_reg_doc_url: metadata.company_reg_doc_url ?? null,
+    };
+
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("firebase_uid", uid)
+      .eq("firebase_uid", authUser.id)
       .maybeSingle();
-    setProfile((data as Profile) ?? null);
+
+    if (error) {
+      console.error("Failed to load profile", error);
+      setProfile(null);
+      return;
+    }
+
+    if (data) {
+      setProfile(data as Profile);
+      return;
+    }
+
+    const { data: created, error: createError } = await supabase
+      .from("profiles")
+      .upsert(defaults, { onConflict: "firebase_uid" })
+      .select("*")
+      .maybeSingle();
+
+    if (createError) {
+      console.error("Failed to create profile", createError);
+    }
+    setProfile((created as Profile) ?? null);
   };
 
   useEffect(() => {
-    let unsub = () => {};
-    (async () => {
-      const { auth } = await getFirebase();
-      const { onAuthStateChanged } = await import("firebase/auth");
-      unsub = onAuthStateChanged(auth, async (u) => {
-        setUser(u);
-        if (u) await loadProfile(u.uid);
-        else setProfile(null);
-        setLoading(false);
-      });
-    })().catch(() => setLoading(false));
-    return () => unsub();
+    let active = true;
+
+    const syncUser = async (authUser: User | null) => {
+      if (!active) return;
+      setUser(authUser);
+      if (authUser) await loadProfile(authUser);
+      else setProfile(null);
+      if (active) setLoading(false);
+    };
+
+    supabase.auth.getUser().then(({ data }) => syncUser(data.user)).catch(() => setLoading(false));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      void syncUser(session?.user ?? null);
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const refreshProfile = async () => {
-    if (user) await loadProfile(user.uid);
+    if (user) await loadProfile(user);
   };
 
   const signOut = async () => {
-    const { auth } = await getFirebase();
-    const { signOut: fbSignOut } = await import("firebase/auth");
-    await fbSignOut(auth);
+    await supabase.auth.signOut();
   };
 
   return (

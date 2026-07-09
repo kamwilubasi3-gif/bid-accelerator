@@ -5,6 +5,8 @@ import { Home, History, FileText, Calculator, BookOpen, LogOut, Menu, X, User } 
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Toaster } from "sonner";
 
+const logoSrc = "/tender-pro-icon-192.png";
+
 export const Route = createFileRoute("/app")({
   component: () => (
     <AuthProvider>
@@ -50,7 +52,7 @@ function AppShell() {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-sidebar border-r border-sidebar-border p-4 transition-transform lg:static lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="mb-6 flex items-center justify-between">
           <Link to="/app" className="flex items-center gap-2 font-bold">
-            <span className="teal-gradient grid h-9 w-9 place-items-center rounded-lg text-sm">TP</span>
+            <img src={logoSrc} alt="Tender Pro logo" className="h-10 w-10 rounded-xl" />
             Tender Pro
           </Link>
           <button className="lg:hidden" onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
@@ -90,6 +92,7 @@ function AppShell() {
       <main className="flex-1 min-w-0">
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/70 p-4 backdrop-blur-md lg:hidden">
           <button onClick={() => setOpen(true)}><Menu className="h-6 w-6" /></button>
+          <img src={logoSrc} alt="Tender Pro logo" className="h-8 w-8 rounded-lg" />
           <span className="font-semibold">Tender Pro</span>
         </header>
         <div className="p-4 md:p-8">

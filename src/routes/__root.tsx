@@ -20,7 +20,7 @@ function NotFoundComponent() {
         <h2 className="mt-4 text-xl font-semibold">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">The page you're looking for doesn't exist.</p>
         <div className="mt-6">
-          <Link to="/" className="teal-gradient inline-flex items-center rounded-full px-6 py-2 text-sm font-semibold">Go home</Link>
+          <Link to="/auth" search={{ mode: "login" }} className="teal-gradient inline-flex items-center rounded-full px-6 py-2 text-sm font-semibold">Go to login</Link>
         </div>
       </div>
     </div>
@@ -62,7 +62,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/tender-pro-icon-192.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/tender-pro-icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),

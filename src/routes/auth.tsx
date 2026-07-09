@@ -2,10 +2,12 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { getFirebase } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/lib/auth-context";
 import authImg from "@/assets/auth-signing.jpg";
+
+const logoSrc = "/tender-pro-icon-192.png";
 
 const searchSchema = z.object({ mode: z.enum(["login", "signup", "forgot"]).catch("login") });
 
@@ -25,9 +27,10 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center bg-white p-8 lg:p-16">
+      <div className="flex items-center justify-center bg-slate-100 p-8 lg:p-16">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
+            <img src={logoSrc} alt="Tender Pro logo" className="mx-auto mb-4 h-16 w-16 rounded-2xl shadow-lg" />
             <h1 className="text-4xl font-black tracking-tight text-slate-900">
               {mode === "signup" ? "SIGN UP" : mode === "forgot" ? "RESET" : "LOGIN"}
             </h1>
@@ -54,7 +57,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-full border border-slate-200 bg-slate-100 px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-teal-500 focus:bg-white ${props.className ?? ""}`}
+      className={`w-full rounded-full border border-slate-300 bg-slate-200 px-5 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-teal-500 focus:bg-slate-50 ${props.className ?? ""}`}
     />
   );
 }
@@ -83,9 +86,8 @@ function LoginForm() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { auth } = await getFirebase();
-      const { signInWithEmailAndPassword } = await import("firebase/auth");
-      await signInWithEmailAndPassword(auth, email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
       toast.success("Welcome back");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Login failed");
@@ -95,10 +97,19 @@ function LoginForm() {
   const doGoogle = async () => {
     setBusy(true);
     try {
-      const { auth } = await getFirebase();
-      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-      await upsertProfile(cred.user.uid, cred.user.email ?? "", { full_name: cred.user.displayName });
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: { prompt: "select_account" },
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        await upsertProfile(data.user.id, data.user.email ?? "", {
+          full_name: data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? null,
+        });
+      }
+      toast.success("Google sign-in complete");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Google sign-in failed");
     } finally { setBusy(false); }
@@ -130,9 +141,10 @@ function ForgotForm() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { auth } = await getFirebase();
-      const { sendPasswordResetEmail } = await import("firebase/auth");
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
       toast.success("Password reset email sent — check your inbox");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to send email");
@@ -171,31 +183,43 @@ function SignUpForm() {
     if (!accepted) return toast.error("Please accept the terms & conditions");
     setBusy(true);
     try {
-      const { auth } = await getFirebase();
-      const { createUserWithEmailAndPassword, updateProfile } = await import("firebase/auth");
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(cred.user, { displayName: fullName });
-
-      let regDocUrl: string | null = null;
-      if (regDoc && hasCompany === "yes") {
-        const path = `${cred.user.uid}/registration-${Date.now()}-${regDoc.name}`;
-        const { error } = await supabase.storage.from("documents").upload(path, regDoc);
-        if (!error) {
-          const { data } = await supabase.storage.from("documents").createSignedUrl(path, 60 * 60 * 24 * 365);
-          regDocUrl = data?.signedUrl ?? null;
-        }
-      }
-      await upsertProfile(cred.user.uid, email, {
-        full_name: fullName, phone, address,
+      const metadata = {
+        full_name: fullName,
+        phone,
+        address,
         has_company: hasCompany === "yes",
         company_name: companyName || null,
         company_reg_number: companyReg || null,
         tpin: tpin || null,
         company_contacts: companyContacts || null,
         company_address: companyAddress || null,
-        company_reg_doc_url: regDocUrl,
+      };
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth?mode=login`,
+          data: metadata,
+        },
       });
-      toast.success("Successfully signed up! Check your email.");
+      if (error) throw error;
+
+      let regDocUrl: string | null = null;
+      if (data.user && regDoc && hasCompany === "yes") {
+        const path = `${data.user.id}/registration-${Date.now()}-${regDoc.name}`;
+        const { error: uploadError } = await supabase.storage.from("documents").upload(path, regDoc);
+        if (!uploadError) {
+          const { data: signed } = await supabase.storage.from("documents").createSignedUrl(path, 60 * 60 * 24 * 365);
+          regDocUrl = signed?.signedUrl ?? null;
+        }
+      }
+
+      if (data.session && data.user) {
+        await upsertProfile(data.user.id, email, { ...metadata, company_reg_doc_url: regDocUrl });
+        toast.success("Account created — welcome to Tender Pro");
+      } else {
+        toast.success("Account created. Check your email to confirm, then log in.");
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally { setBusy(false); }

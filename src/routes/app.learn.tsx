@@ -27,7 +27,7 @@ function LearnPage() {
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.id).eq("usage_date", today).maybeSingle();
       if ((usage?.summaries_count ?? 0) >= limits.summaries) {
         toast.error("Daily limit reached.");
         setBusy(false);
@@ -37,17 +37,17 @@ function LearnPage() {
       const { summary: s } = await summarizeBid({ data: { model: limits.model, docsText } });
       setSummary(s);
       await supabase.from("proposals").insert({
-        firebase_uid: user.uid, type: "summary",
+        firebase_uid: user.id, type: "summary",
         title: `Bid Summary — ${files[0]?.name ?? "documents"}`,
         content: s,
       });
       if (usage) {
         await supabase.from("daily_usage").update({ summaries_count: (usage.summaries_count ?? 0) + 1 }).eq("id", usage.id);
       } else {
-        await supabase.from("daily_usage").insert({ firebase_uid: user.uid, usage_date: today, summaries_count: 1 });
+        await supabase.from("daily_usage").insert({ firebase_uid: user.id, usage_date: today, summaries_count: 1 });
       }
       if (plan === "trial") {
-        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.uid);
+        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
       toast.success("Summary ready");

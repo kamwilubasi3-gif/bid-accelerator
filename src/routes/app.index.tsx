@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Calculator, TrendingUp, Zap } from "lucide-react";
@@ -10,23 +11,42 @@ export const Route = createFileRoute("/app/")({
 
 function HomePage() {
   const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  useEffect(() => {
+    if (!user) return;
+    const refreshCounters = () => {
+      void queryClient.invalidateQueries({ queryKey: ["proposals-count", user.id] });
+      void queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] });
+      void queryClient.invalidateQueries({ queryKey: ["proposals", user.id] });
+    };
+    const channel = supabase
+      .channel(`home-counters-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "daily_usage", filter: `firebase_uid=eq.${user.id}` }, refreshCounters)
+      .on("postgres_changes", { event: "*", schema: "public", table: "proposals", filter: `firebase_uid=eq.${user.id}` }, refreshCounters)
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, today, user]);
+
   const totalQuery = useQuery({
-    queryKey: ["proposals-count", user?.uid],
+    queryKey: ["proposals-count", user?.id],
     queryFn: async () => {
       if (!user) return 0;
-      const { count } = await supabase.from("proposals").select("*", { count: "exact", head: true }).eq("firebase_uid", user.uid);
+      const { count } = await supabase.from("proposals").select("*", { count: "exact", head: true }).eq("firebase_uid", user.id);
       return count ?? 0;
     },
     enabled: !!user,
   });
 
   const todayQuery = useQuery({
-    queryKey: ["usage-today", user?.uid, today],
+    queryKey: ["usage-today", user?.id, today],
     queryFn: async () => {
       if (!user) return { proposals_count: 0, summaries_count: 0 };
-      const { data } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      const { data } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.id).eq("usage_date", today).maybeSingle();
       return data ?? { proposals_count: 0, summaries_count: 0 };
     },
     enabled: !!user,

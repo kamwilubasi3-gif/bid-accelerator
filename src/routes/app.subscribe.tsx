@@ -26,13 +26,13 @@ function SubscribePage() {
     setBusy(true);
     setStep("prompt");
     try {
-      const { depositId } = await initiateDeposit({ data: { firebase_uid: user.uid, plan: selected, provider, phone } });
+      const { depositId } = await initiateDeposit({ data: { plan: selected, provider, phone } });
       toast.success("Check your phone and enter your Mobile Money PIN");
       setStep("polling");
       let tries = 0;
       const poll = async () => {
         tries++;
-        const { status } = await checkDeposit({ data: { depositId, firebase_uid: user.uid } });
+        const { status } = await checkDeposit({ data: { depositId } });
         if (status === "COMPLETED") {
           await refreshProfile();
           toast.success("Subscription active! 🎉");

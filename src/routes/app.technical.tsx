@@ -42,7 +42,7 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.uid).eq("usage_date", today).maybeSingle();
+      const { data: usage } = await supabase.from("daily_usage").select("*").eq("firebase_uid", user.id).eq("usage_date", today).maybeSingle();
       if ((usage?.proposals_count ?? 0) >= limits.proposals) {
         toast.error("Daily limit reached.");
         setBusy(false);
@@ -62,17 +62,17 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
       const title = `${type === "technical" ? "Technical" : "Financial"} Proposal — ${company || preparer}`;
 
       await supabase.from("proposals").insert({
-        firebase_uid: user.uid, type, title, content, winning_tips,
+        firebase_uid: user.id, type, title, content, winning_tips,
       });
 
       if (usage) {
         await supabase.from("daily_usage").update({ proposals_count: (usage.proposals_count ?? 0) + 1 }).eq("id", usage.id);
       } else {
-        await supabase.from("daily_usage").insert({ firebase_uid: user.uid, usage_date: today, proposals_count: 1 });
+        await supabase.from("daily_usage").insert({ firebase_uid: user.id, usage_date: today, proposals_count: 1 });
       }
 
       if (plan === "trial") {
-        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.uid);
+        await supabase.from("profiles").update({ free_trial_used: true }).eq("firebase_uid", user.id);
         await refreshProfile();
       }
 
