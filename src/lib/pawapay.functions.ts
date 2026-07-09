@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export const initiateDeposit = createServerFn({ method: "POST" })
@@ -12,7 +11,6 @@ export const initiateDeposit = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const token = process.env.PAWAPAY_API_TOKEN;
     if (!token) throw new Error("Missing PAWAPAY_API_TOKEN");
-    const s = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const pawapayBase = "https://api.sandbox.pawapay.io";
     const correspondents: Record<string, string> = {
       airtel: "AIRTEL_ZMB",
@@ -50,7 +48,7 @@ export const initiateDeposit = createServerFn({ method: "POST" })
     let json: Record<string, unknown> = {};
     try { json = JSON.parse(text); } catch { /* ignore */ }
 
-    await s.from("payments").insert({
+    await context.supabase.from("payments").insert({
       firebase_uid: context.userId,
       deposit_id: depositId,
       plan: data.plan,
@@ -76,11 +74,10 @@ export const checkDeposit = createServerFn({ method: "POST" })
     const record = Array.isArray(arr) ? arr[0] : (arr as { status?: string });
     const status = record?.status ?? "UNKNOWN";
 
-    const s = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-    await s.from("payments").update({ status }).eq("deposit_id", data.depositId);
+    await context.supabase.from("payments").update({ status }).eq("deposit_id", data.depositId);
 
     if (status === "COMPLETED") {
-      const { data: payment } = await s
+      const { data: payment } = await context.supabase
         .from("payments")
         .select("plan")
         .eq("deposit_id", data.depositId)
@@ -88,7 +85,7 @@ export const checkDeposit = createServerFn({ method: "POST" })
       const plan = (payment?.plan as string) ?? "basic";
       const expires = new Date();
       expires.setDate(expires.getDate() + 30);
-      await s
+      await context.supabase
         .from("profiles")
         .update({ plan, plan_expires_at: expires.toISOString(), free_trial_used: true })
         .eq("firebase_uid", context.userId);
