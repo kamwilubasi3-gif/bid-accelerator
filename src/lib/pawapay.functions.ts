@@ -51,13 +51,14 @@ export const initiateDeposit = createServerFn({ method: "POST" })
       payer: { type: "MSISDN", address: { value: msisdn } },
       customerTimestamp: new Date().toISOString(),
       statementDescription: "Tender Pro",
+      metadata: [
+        { fieldName: "user_id", fieldValue: context.userId },
+        { fieldName: "plan", fieldValue: data.plan },
+        { fieldName: "callback_url", fieldValue: callbackUrl() ?? "" },
+      ],
     };
     const cb = callbackUrl();
-    if (cb) body.preAuthorisationCode = undefined; // no-op; callback is registered per-app in dashboard OR via metadata
-    body.metadata = [
-      { fieldName: "user_id", fieldValue: context.userId },
-      { fieldName: "plan", fieldValue: data.plan },
-    ];
+    if (cb) body.metadata = (body.metadata as Array<Record<string,string>>);
 
     const res = await fetch(`${PAWAPAY_BASE()}/deposits`, {
       method: "POST",
