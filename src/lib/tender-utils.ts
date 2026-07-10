@@ -61,3 +61,20 @@ export function downloadTextAsPdf(title: string, body: string, tips?: string) {
   }
   doc.save(`${title.replace(/[^a-z0-9]+/gi, "_")}.pdf`);
 }
+
+// Download the same text as a Word-compatible .doc file (HTML-based).
+export function downloadTextAsWord(title: string, body: string, tips?: string) {
+  const esc = (s: string) => s
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>");
+  const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"/><title>${esc(title)}</title></head><body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.5;"><h1 style="font-size:20pt;">${esc(title)}</h1><div>${esc(body)}</div>${tips ? `<h2 style="font-size:16pt;margin-top:24pt;">How to win this contract</h2><div>${esc(tips)}</div>` : ""}</body></html>`;
+  const blob = new Blob(["\uFEFF" + html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${title.replace(/[^a-z0-9]+/gi, "_")}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
