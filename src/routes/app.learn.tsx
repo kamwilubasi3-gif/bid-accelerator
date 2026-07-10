@@ -1,13 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { summarizeBid } from "@/lib/ai.functions";
-import { readMany, downloadTextAsPdf } from "@/lib/tender-utils";
+import { readMany, downloadTextAsPdf, downloadTextAsWord } from "@/lib/tender-utils";
 import { FileDrop } from "./app.technical";
-import { BookOpen, Download } from "lucide-react";
+import { BookOpen, Download, Lock, FileType } from "lucide-react";
 
 export const Route = createFileRoute("/app/learn")({ component: LearnPage });
 
@@ -21,6 +21,7 @@ function LearnPage() {
   const active = hasActiveSubscription(profile);
   const plan = active ? profile!.plan : profile?.free_trial_used ? "none" : "trial";
   const limits = planLimits(plan);
+  const locked = !summary && limits.summaries === 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,22 +75,45 @@ function LearnPage() {
         </div>
       </div>
 
+      {locked && (
+        <div className="glass-card space-y-3 p-8 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/15">
+            <Lock className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold">Subscribe to summarize more bids</h2>
+          <p className="text-muted-foreground">You've used your free trial. Choose a plan to continue.</p>
+          <Link to="/app/subscribe" className="teal-gradient teal-glow inline-block rounded-full px-6 py-2.5 text-sm font-semibold">See plans</Link>
+        </div>
+      )}
+
+      {!locked && (
       <form onSubmit={submit} className="glass-card space-y-4 p-6">
         <FileDrop label="Attach bid / tender documents" files={files} onChange={setFiles} />
         <button disabled={busy || files.length === 0} className="teal-gradient teal-glow w-full rounded-full py-3 font-semibold disabled:opacity-60">
           {busy ? "Analyzing…" : "Summarize"}
         </button>
       </form>
+      )}
 
       {summary && (
         <div className="glass-card space-y-4 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xl font-semibold">Summary</h3>
-            <button onClick={() => downloadTextAsPdf("Bid Summary", summary)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-              <Download className="h-4 w-4" /> Download PDF
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => downloadTextAsPdf("Bid Summary", summary)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                <Download className="h-4 w-4" /> PDF
+              </button>
+              <button onClick={() => downloadTextAsWord("Bid Summary", summary)} className="flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10">
+                <FileType className="h-4 w-4" /> Word
+              </button>
+            </div>
           </div>
           <pre className="max-h-[600px] overflow-auto whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{summary}</pre>
+          {(plan === "trial" || plan === "none") && (
+            <div className="rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
+              This was your free trial. <Link to="/app/subscribe" className="font-semibold underline">Subscribe</Link> to keep summarizing bids.
+            </div>
+          )}
         </div>
       )}
     </div>
