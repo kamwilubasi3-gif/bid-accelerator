@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { generateProposal } from "@/lib/ai.functions";
-import { readMany, downloadTextAsPdf } from "@/lib/tender-utils";
-import { FileText, Upload, Download } from "lucide-react";
+import { readMany, downloadTextAsPdf, downloadTextAsWord } from "@/lib/tender-utils";
+import { FileText, Upload, Download, Lock, FileType } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/technical")({ component: TechnicalPage });
 
@@ -32,6 +33,7 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
   const active = hasActiveSubscription(profile);
   const plan = active ? profile!.plan : profile?.free_trial_used ? "none" : "trial";
   const limits = planLimits(plan);
+  const locked = !result && limits.proposals === 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +105,18 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
         </div>
       </div>
 
+      {locked && (
+        <div className="glass-card space-y-3 p-8 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/15">
+            <Lock className="h-7 w-7 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold">Subscribe to build more proposals</h2>
+          <p className="text-muted-foreground">You've used your free trial. Choose a plan to keep creating winning proposals.</p>
+          <Link to="/app/subscribe" className="teal-gradient teal-glow inline-block rounded-full px-6 py-2.5 text-sm font-semibold">See plans</Link>
+        </div>
+      )}
+
+      {!locked && (
       <form onSubmit={submit} className="glass-card space-y-4 p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Name of preparer" value={preparer} onChange={setPreparer} required />
@@ -136,14 +150,20 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
           {busy ? "Generating with AI…" : `Generate ${type === "technical" ? "Technical" : "Financial"} Proposal`}
         </button>
       </form>
+      )}
 
       {result && (
         <div className="glass-card space-y-4 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xl font-semibold">{result.title}</h3>
-            <button onClick={() => downloadTextAsPdf(result.title, result.content, result.winning_tips || undefined)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-              <Download className="h-4 w-4" /> Download PDF
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => downloadTextAsPdf(result.title, result.content, result.winning_tips || undefined)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                <Download className="h-4 w-4" /> PDF
+              </button>
+              <button onClick={() => downloadTextAsWord(result.title, result.content, result.winning_tips || undefined)} className="flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10">
+                <FileType className="h-4 w-4" /> Word
+              </button>
+            </div>
           </div>
           <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{result.content}</pre>
           {result.winning_tips && (
@@ -152,6 +172,11 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
               <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{result.winning_tips}</pre>
             </div>
           )}
+          {plan === "trial" || plan === "none" ? (
+            <div className="rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
+              This is your free-trial document. To create another, please <Link to="/app/subscribe" className="font-semibold underline">subscribe to a plan</Link>.
+            </div>
+          ) : null}
         </div>
       )}
     </div>
