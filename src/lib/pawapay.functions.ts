@@ -1,6 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// PawaPay endpoints. Production sends real Mobile Money PIN prompts.
+// Set PAWAPAY_BASE_URL=https://api.sandbox.pawapay.io in secrets to test with
+// pawapay's sandbox test MSISDNs (real phones will NOT get a PIN in sandbox).
+const PAWAPAY_BASE = () => process.env.PAWAPAY_BASE_URL || "https://api.pawapay.io";
+
+// Correct Zambia correspondent codes (as required by PawaPay)
+const CORRESPONDENTS: Record<string, string> = {
+  airtel: "AIRTEL_OAPI_ZMB",
+  mtn: "MTN_MOMO_ZMB",
+  zamtel: "ZAMTEL_ZMB",
+};
+
+const AMOUNTS = { basic: 220, pro: 500, premium: 1500 } as const;
+
+function normalizeMsisdn(phone: string): string {
+  let m = phone.replace(/[^0-9]/g, "");
+  if (m.startsWith("0")) m = "260" + m.slice(1);
+  if (!m.startsWith("260")) m = "260" + m;
+  return m;
+}
+
+function callbackUrl(): string | undefined {
+  // Points at our public webhook. See src/routes/api/public/pawapay-callback.ts
+  const base = process.env.APP_PUBLIC_URL || "https://bid-accelerator.lovable.app";
+  return `${base}/api/public/pawapay-callback`;
+}
+
 export const initiateDeposit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: {
@@ -11,32 +38,29 @@ export const initiateDeposit = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const token = process.env.PAWAPAY_API_TOKEN;
     if (!token) throw new Error("Missing PAWAPAY_API_TOKEN");
-    const pawapayBase = "https://api.sandbox.pawapay.io";
-    const correspondents: Record<string, string> = {
-      airtel: "AIRTEL_ZMB",
-      mtn: "MTN_ZMB",
-      zamtel: "ZAMTEL_ZMB",
-    };
 
-    const amounts = { basic: 220, pro: 500, premium: 1500 } as const;
-    const amount = amounts[data.plan];
+    const amount = AMOUNTS[data.plan];
     const depositId = crypto.randomUUID();
-    // Normalize phone to international format e.g. 260XXXXXXXXX
-    let msisdn = data.phone.replace(/[^0-9]/g, "");
-    if (msisdn.startsWith("0")) msisdn = "260" + msisdn.slice(1);
-    if (!msisdn.startsWith("260")) msisdn = "260" + msisdn;
+    const msisdn = normalizeMsisdn(data.phone);
 
-    const body = {
+    const body: Record<string, unknown> = {
       depositId,
       amount: String(amount),
       currency: "ZMW",
-      correspondent: correspondents[data.provider],
+      correspondent: CORRESPONDENTS[data.provider],
       payer: { type: "MSISDN", address: { value: msisdn } },
       customerTimestamp: new Date().toISOString(),
-      statementDescription: "TenderPro",
+      statementDescription: "Tender Pro",
+      metadata: [
+        { fieldName: "user_id", fieldValue: context.userId },
+        { fieldName: "plan", fieldValue: data.plan },
+        { fieldName: "callback_url", fieldValue: callbackUrl() ?? "" },
+      ],
     };
+    const cb = callbackUrl();
+    if (cb) body.metadata = (body.metadata as Array<Record<string,string>>);
 
-    const res = await fetch(`${pawapayBase}/deposits`, {
+    const res = await fetch(`${PAWAPAY_BASE()}/deposits`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -57,7 +81,12 @@ export const initiateDeposit = createServerFn({ method: "POST" })
       provider: data.provider,
     });
 
-    if (!res.ok) throw new Error(`PawaPay ${res.status}: ${text.slice(0, 200)}`);
+    if (!res.ok) {
+      const msg = (json as { errorMessage?: string; message?: string }).errorMessage
+        || (json as { message?: string }).message
+        || text.slice(0, 300);
+      throw new Error(`PawaPay ${res.status}: ${msg}`);
+    }
     return { depositId, status: json.status ?? "PENDING" };
   });
 
@@ -66,8 +95,7 @@ export const checkDeposit = createServerFn({ method: "POST" })
   .inputValidator((d: { depositId: string }) => d)
   .handler(async ({ data, context }) => {
     const token = process.env.PAWAPAY_API_TOKEN;
-    const pawapayBase = "https://api.sandbox.pawapay.io";
-    const res = await fetch(`${pawapayBase}/deposits/${data.depositId}`, {
+    const res = await fetch(`${PAWAPAY_BASE()}/deposits/${data.depositId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const arr = (await res.json()) as Array<{ status?: string; depositId?: string }>;
@@ -91,4 +119,38 @@ export const checkDeposit = createServerFn({ method: "POST" })
         .eq("firebase_uid", context.userId);
     }
     return { status };
+  });
+
+// Refund a completed deposit (full or partial)
+export const refundDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { depositId: string; amount?: number }) => d)
+  .handler(async ({ data, context }) => {
+    const token = process.env.PAWAPAY_API_TOKEN;
+    if (!token) throw new Error("Missing PAWAPAY_API_TOKEN");
+
+    // Verify caller owns the payment
+    const { data: payment } = await context.supabase
+      .from("payments")
+      .select("firebase_uid, amount")
+      .eq("deposit_id", data.depositId)
+      .maybeSingle();
+    if (!payment || payment.firebase_uid !== context.userId) {
+      throw new Error("Payment not found");
+    }
+
+    const refundId = crypto.randomUUID();
+    const body = {
+      refundId,
+      depositId: data.depositId,
+      amount: String(data.amount ?? payment.amount),
+    };
+    const res = await fetch(`${PAWAPAY_BASE()}/refunds`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json()) as Record<string, unknown>;
+    if (!res.ok) throw new Error(`PawaPay refund ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+    return { refundId, status: json.status ?? "PENDING" };
   });

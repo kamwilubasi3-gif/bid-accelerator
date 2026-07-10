@@ -20,6 +20,7 @@ import { Route as AppSubscribeRouteImport } from './routes/app.subscribe'
 import { Route as AppLearnRouteImport } from './routes/app.learn'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppFinancialRouteImport } from './routes/app.financial'
+import { Route as ApiPublicPawapayCallbackRouteImport } from './routes/api/public/pawapay-callback'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -76,6 +77,12 @@ const AppFinancialRoute = AppFinancialRouteImport.update({
   path: '/financial',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicPawapayCallbackRoute =
+  ApiPublicPawapayCallbackRouteImport.update({
+    id: '/api/public/pawapay-callback',
+    path: '/api/public/pawapay-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
   '/app/': typeof AppIndexRoute
+  '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
   '/app': typeof AppIndexRoute
+  '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
   '/app/': typeof AppIndexRoute
+  '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/app/subscribe'
     | '/app/technical'
     | '/app/'
+    | '/api/public/pawapay-callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/app/subscribe'
     | '/app/technical'
     | '/app'
+    | '/api/public/pawapay-callback'
   id:
     | '__root__'
     | '/'
@@ -155,6 +167,7 @@ export interface FileRouteTypes {
     | '/app/subscribe'
     | '/app/technical'
     | '/app/'
+    | '/api/public/pawapay-callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,6 +176,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
+  ApiPublicPawapayCallbackRoute: typeof ApiPublicPawapayCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -244,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancialRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/pawapay-callback': {
+      id: '/api/public/pawapay-callback'
+      path: '/api/public/pawapay-callback'
+      fullPath: '/api/public/pawapay-callback'
+      preLoaderRoute: typeof ApiPublicPawapayCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -273,17 +294,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
+  ApiPublicPawapayCallbackRoute: ApiPublicPawapayCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

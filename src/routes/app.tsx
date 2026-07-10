@@ -1,11 +1,12 @@
 import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useAuth, hasActiveSubscription } from "@/lib/auth-context";
+import { useAuth } from "@/lib/auth-context";
 import { Home, History, FileText, Calculator, BookOpen, LogOut, Menu, X, User } from "lucide-react";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
+import logoAsset from "@/assets/tender-pro-logo.png.asset.json";
 
-const logoSrc = "/tender-pro-icon-192.png";
+const logoSrc = logoAsset.url;
 
 export const Route = createFileRoute("/app")({
   component: AppShell,
@@ -36,14 +37,11 @@ function AppShell() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", search: { mode: "login" } });
   }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (!loading && user && profile && !hasActiveSubscription(profile) && location.pathname !== "/app/subscribe") {
-      // Show subscription page unless already using free trial and going to a limited screen
-      if (!profile.free_trial_used) return; // let them try once
-      navigate({ to: "/app/subscribe" });
-    }
-  }, [profile, user, loading, location.pathname, navigate]);
+  // Note: we intentionally DO NOT auto-redirect to /app/subscribe.
+  // Users must be able to view and download their free-trial proposal, view
+  // history, and browse the app. Individual feature pages themselves show an
+  // upgrade prompt when the user has no remaining quota.
+  void profile; void location;
 
   if (loading || !user) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground">Loading…</div>;

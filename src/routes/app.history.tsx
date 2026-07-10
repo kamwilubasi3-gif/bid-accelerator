@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadTextAsPdf } from "@/lib/tender-utils";
-import { Download, FileText, Calculator, BookOpen } from "lucide-react";
+import { downloadTextAsPdf, downloadTextAsWord } from "@/lib/tender-utils";
+import { Download, FileText, Calculator, BookOpen, FileType } from "lucide-react";
 
 export const Route = createFileRoute("/app/history")({ component: HistoryPage });
 
@@ -42,12 +42,20 @@ function HistoryPage() {
                   {p.type} · {new Date(p.created_at).toLocaleString()}
                 </div>
               </div>
-              <button
-                onClick={() => downloadTextAsPdf(p.title, p.content ?? "", p.winning_tips ?? undefined)}
-                className="flex items-center gap-2 rounded-full bg-primary/20 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/30"
-              >
-                <Download className="h-4 w-4" /> Download PDF
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => downloadTextAsPdf(p.title, p.content ?? "", p.winning_tips ?? undefined)}
+                  className="flex items-center gap-2 rounded-full bg-primary/20 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/30"
+                >
+                  <Download className="h-4 w-4" /> PDF
+                </button>
+                <button
+                  onClick={() => downloadTextAsWord(p.title, p.content ?? "", p.winning_tips ?? undefined)}
+                  className="flex items-center gap-2 rounded-full border border-primary/40 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10"
+                >
+                  <FileType className="h-4 w-4" /> Word
+                </button>
+              </div>
             </div>
           );
         })}
