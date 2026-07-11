@@ -113,6 +113,11 @@
   box-shadow: var(--shadow-glow);
 }
 
+@layer base {
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  img, video, canvas, svg { max-width: 100%; height: auto; }
+}
+
 /* Hide Lovable badge in the live app */
 #lovable-badge,
 [data-lovable-badge],
@@ -124,3 +129,4 @@ div[class*="lovable-badge"] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
