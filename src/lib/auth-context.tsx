@@ -135,9 +135,52 @@ export function hasActiveSubscription(profile: Profile | null): boolean {
 }
 
 export const PLANS = {
-  basic: { name: "Basic", price: 220, proposals: 3, summaries: 3, model: "google/gemini-2.5-flash-lite" },
-  pro: { name: "Pro", price: 500, proposals: 8, summaries: 10, model: "google/gemini-2.5-flash" },
-  premium: { name: "Premium", price: 1500, proposals: 20, summaries: 999, model: "openai/gpt-5.5", tips: true },
+  basic: {
+    name: "Basic",
+    price: 220,
+    proposals: 3,
+    summaries: 3,
+    model: "google/gemini-2.5-flash-lite",
+    features: [
+      "3 proposals / contracts per day",
+      "3 bid summaries per day",
+      "Technical & financial proposals",
+      "Partnership proposal support",
+      "PDF & Word download",
+    ],
+  },
+  pro: {
+    name: "Pro",
+    price: 500,
+    proposals: 6,
+    summaries: 10,
+    model: "google/gemini-2.5-flash",
+    features: [
+      "6 proposals / contracts per day",
+      "10 bid summaries per day",
+      "Technical, financial & partnership",
+      "Proposal Strength Checker",
+      "Header/template builder",
+      "PDF & Word download",
+    ],
+  },
+  premium: {
+    name: "Premium",
+    price: 1500,
+    proposals: 14,
+    summaries: 999,
+    model: "openai/gpt-5.5",
+    tips: true,
+    features: [
+      "14 proposals / contracts per day",
+      "Unlimited bid summaries",
+      "Winning insider tips",
+      "Proposal Strength Checker + budget analysis",
+      "Premium templates & custom header builder",
+      "Priority AI (highest quality)",
+      "PDF & Word download",
+    ],
+  },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
@@ -146,3 +189,4 @@ export function planLimits(plan: string) {
   if (plan === "trial") return { proposals: 1, summaries: 1, model: "google/gemini-2.5-flash-lite", tips: false };
   return (PLANS as Record<string, { proposals: number; summaries: number; model: string; tips?: boolean }>)[plan] ?? { proposals: 0, summaries: 0, model: "", tips: false };
 }
+
