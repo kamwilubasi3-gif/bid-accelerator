@@ -59,6 +59,8 @@ function LearnPage() {
         queryClient.invalidateQueries({ queryKey: ["usage-today", user.id, today] }),
         queryClient.invalidateQueries({ queryKey: ["proposals", user.id] }),
       ]);
+      setSummary(s);
+      setPreview(true);
       toast.success("Summary ready");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed");
