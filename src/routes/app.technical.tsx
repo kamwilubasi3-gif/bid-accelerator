@@ -30,6 +30,7 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ content: string; winning_tips: string; title: string } | null>(null);
+  const [preview, setPreview] = useState(false);
 
   const active = hasActiveSubscription(profile);
   const plan = active ? profile!.plan : profile?.free_trial_used ? "none" : "trial";
@@ -88,6 +89,7 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
       ]);
 
       setResult({ content, winning_tips, title });
+      setPreview(true);
       toast.success("Proposal generated!");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed");
@@ -157,7 +159,10 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
         <div className="glass-card space-y-4 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xl font-semibold">{result.title}</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setPreview(true)} className="flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/25">
+                <Eye className="h-4 w-4" /> Preview
+              </button>
               <button onClick={() => downloadTextAsPdf(result.title, result.content, result.winning_tips || undefined)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
                 <Download className="h-4 w-4" /> PDF
               </button>
@@ -166,19 +171,23 @@ export function ProposalBuilder({ type }: { type: "technical" | "financial" }) {
               </button>
             </div>
           </div>
-          <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{result.content}</pre>
-          {result.winning_tips && (
-            <div>
-              <h4 className="font-semibold text-primary">🏆 How to win this contract</h4>
-              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{result.winning_tips}</pre>
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground">Your proposal is ready. Click <span className="font-semibold text-primary">Preview</span> to review it, then download as PDF or Word.</p>
           {plan === "trial" || plan === "none" ? (
             <div className="rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
               This is your free-trial document. To create another, please <Link to="/app/subscribe" className="font-semibold underline">subscribe to a plan</Link>.
             </div>
           ) : null}
         </div>
+      )}
+
+      {result && (
+        <DocumentPreview
+          open={preview}
+          onClose={() => setPreview(false)}
+          title={result.title}
+          content={result.content}
+          winning_tips={result.winning_tips || undefined}
+        />
       )}
     </div>
   );

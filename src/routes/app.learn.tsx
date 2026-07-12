@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { summarizeBid } from "@/lib/ai.functions";
 import { readMany, downloadTextAsPdf, downloadTextAsWord } from "@/lib/tender-utils";
 import { FileDrop } from "./app.technical";
-import { BookOpen, Download, Lock, FileType } from "lucide-react";
+import { BookOpen, Download, Lock, FileType, Eye } from "lucide-react";
+import { DocumentPreview } from "@/components/DocumentPreview";
 
 export const Route = createFileRoute("/app/learn")({ component: LearnPage });
 
@@ -15,8 +16,8 @@ function LearnPage() {
   const { user, profile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
-  const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
+  const [preview, setPreview] = useState(false);
 
   const active = hasActiveSubscription(profile);
   const plan = active ? profile!.plan : profile?.free_trial_used ? "none" : "trial";
