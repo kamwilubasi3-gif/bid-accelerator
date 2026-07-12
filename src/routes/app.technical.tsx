@@ -6,8 +6,9 @@ import { useAuth, planLimits, hasActiveSubscription } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { generateProposal } from "@/lib/ai.functions";
 import { readMany, downloadTextAsPdf, downloadTextAsWord } from "@/lib/tender-utils";
-import { FileText, Upload, Download, Lock, FileType } from "lucide-react";
+import { FileText, Upload, Download, Lock, FileType, Eye } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { DocumentPreview } from "@/components/DocumentPreview";
 
 export const Route = createFileRoute("/app/technical")({ component: TechnicalPage });
 
