@@ -16,6 +16,7 @@ function LearnPage() {
   const { user, profile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
   const [preview, setPreview] = useState(false);
 
