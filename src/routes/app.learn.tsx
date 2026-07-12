@@ -103,7 +103,10 @@ function LearnPage() {
         <div className="glass-card space-y-4 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xl font-semibold">Summary</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setPreview(true)} className="flex items-center gap-2 rounded-full bg-primary/15 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/25">
+                <Eye className="h-4 w-4" /> Preview
+              </button>
               <button onClick={() => downloadTextAsPdf("Bid Summary", summary)} className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
                 <Download className="h-4 w-4" /> PDF
               </button>
@@ -112,13 +115,17 @@ function LearnPage() {
               </button>
             </div>
           </div>
-          <pre className="max-h-[600px] overflow-auto whitespace-pre-wrap rounded-lg bg-background/50 p-4 text-sm">{summary}</pre>
+          <p className="text-sm text-muted-foreground">Your summary is ready. Preview it or download as PDF / Word.</p>
           {(plan === "trial" || plan === "none") && (
             <div className="rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
               This was your free trial. <Link to="/app/subscribe" className="font-semibold underline">Subscribe</Link> to keep summarizing bids.
             </div>
           )}
         </div>
+      )}
+
+      {summary && (
+        <DocumentPreview open={preview} onClose={() => setPreview(false)} title="Bid Summary" content={summary} />
       )}
     </div>
   );
