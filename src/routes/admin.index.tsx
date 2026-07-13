@@ -11,9 +11,9 @@ function AdminUsers() {
   const usersQuery = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id,firebase_uid,email,full_name,phone,plan,plan_expires_at,blocked,created_at" as never).order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Array<{ id: string; firebase_uid: string; email: string; full_name: string | null; phone: string | null; plan: string; plan_expires_at: string | null; blocked: boolean | null; created_at: string }>;
+      return (data ?? []) as unknown as Array<{ id: string; firebase_uid: string; email: string; full_name: string | null; phone: string | null; plan: string; plan_expires_at: string | null; blocked: boolean | null; created_at: string }>;
     },
   });
 

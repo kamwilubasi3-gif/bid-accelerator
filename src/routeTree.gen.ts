@@ -13,13 +13,17 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AppTechnicalRouteImport } from './routes/app.technical'
 import { Route as AppSubscribeRouteImport } from './routes/app.subscribe'
 import { Route as AppLearnRouteImport } from './routes/app.learn'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppFinancialRouteImport } from './routes/app.financial'
+import { Route as AdminSubscriptionsRouteImport } from './routes/admin.subscriptions'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as ApiPublicPawapayCallbackRouteImport } from './routes/api/public/pawapay-callback'
 
 const TermsRoute = TermsRouteImport.update({
@@ -42,6 +46,11 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -51,6 +60,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AppTechnicalRoute = AppTechnicalRouteImport.update({
   id: '/technical',
@@ -77,6 +91,16 @@ const AppFinancialRoute = AppFinancialRouteImport.update({
   path: '/financial',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiPublicPawapayCallbackRoute =
   ApiPublicPawapayCallbackRouteImport.update({
     id: '/api/public/pawapay-callback',
@@ -86,15 +110,19 @@ const ApiPublicPawapayCallbackRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/app/financial': typeof AppFinancialRoute
   '/app/history': typeof AppHistoryRoute
   '/app/learn': typeof AppLearnRoute
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
@@ -103,26 +131,33 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/app/financial': typeof AppFinancialRoute
   '/app/history': typeof AppHistoryRoute
   '/app/learn': typeof AppLearnRoute
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
+  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/app/financial': typeof AppFinancialRoute
   '/app/history': typeof AppHistoryRoute
   '/app/learn': typeof AppLearnRoute
   '/app/subscribe': typeof AppSubscribeRoute
   '/app/technical': typeof AppTechnicalRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/api/public/pawapay-callback': typeof ApiPublicPawapayCallbackRoute
 }
@@ -130,15 +165,19 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/app'
     | '/auth'
     | '/reset-password'
     | '/terms'
+    | '/admin/notifications'
+    | '/admin/subscriptions'
     | '/app/financial'
     | '/app/history'
     | '/app/learn'
     | '/app/subscribe'
     | '/app/technical'
+    | '/admin/'
     | '/app/'
     | '/api/public/pawapay-callback'
   fileRoutesByTo: FileRoutesByTo
@@ -147,31 +186,39 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/terms'
+    | '/admin/notifications'
+    | '/admin/subscriptions'
     | '/app/financial'
     | '/app/history'
     | '/app/learn'
     | '/app/subscribe'
     | '/app/technical'
+    | '/admin'
     | '/app'
     | '/api/public/pawapay-callback'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/app'
     | '/auth'
     | '/reset-password'
     | '/terms'
+    | '/admin/notifications'
+    | '/admin/subscriptions'
     | '/app/financial'
     | '/app/history'
     | '/app/learn'
     | '/app/subscribe'
     | '/app/technical'
+    | '/admin/'
     | '/app/'
     | '/api/public/pawapay-callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -209,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -222,6 +276,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/app/technical': {
       id: '/app/technical'
@@ -258,6 +319,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancialRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/subscriptions': {
+      id: '/admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/admin/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/public/pawapay-callback': {
       id: '/api/public/pawapay-callback'
       path: '/api/public/pawapay-callback'
@@ -267,6 +342,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
   AppFinancialRoute: typeof AppFinancialRoute
@@ -290,6 +379,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
