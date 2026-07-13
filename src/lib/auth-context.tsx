@@ -19,11 +19,13 @@ export type Profile = {
   plan: string;
   plan_expires_at: string | null;
   free_trial_used: boolean | null;
+  blocked?: boolean | null;
 };
 
 type Ctx = {
   user: User | null;
   profile: Profile | null;
+  isAdmin: boolean;
   loading: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,6 +34,7 @@ type Ctx = {
 const AuthContext = createContext<Ctx>({
   user: null,
   profile: null,
+  isAdmin: false,
   loading: true,
   refreshProfile: async () => {},
   signOut: async () => {},
@@ -40,6 +43,7 @@ const AuthContext = createContext<Ctx>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async (authUser: User) => {
@@ -59,67 +63,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       company_reg_doc_url: metadata.company_reg_doc_url ?? null,
     };
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("firebase_uid", authUser.id)
-      .maybeSingle();
+    const { data } = await supabase.from("profiles").select("*").eq("firebase_uid", authUser.id).maybeSingle();
+    let p = data as Profile | null;
+    if (!p) {
+      const { data: created } = await supabase.from("profiles").upsert(defaults, { onConflict: "firebase_uid" }).select("*").maybeSingle();
+      p = (created as Profile) ?? null;
+    }
 
-    if (error) {
-      console.error("Failed to load profile", error);
+    // Role check
+    const { data: roleRow } = await supabase
+      .from("user_roles" as never)
+      .select("role")
+      .eq("user_id", authUser.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    const admin = !!roleRow;
+    setIsAdmin(admin);
+
+    if (p?.blocked && !admin) {
+      await supabase.auth.signOut();
+      setUser(null);
       setProfile(null);
       return;
     }
 
-    if (data) {
-      setProfile(data as Profile);
-      return;
-    }
-
-    const { data: created, error: createError } = await supabase
-      .from("profiles")
-      .upsert(defaults, { onConflict: "firebase_uid" })
-      .select("*")
-      .maybeSingle();
-
-    if (createError) {
-      console.error("Failed to create profile", createError);
-    }
-    setProfile((created as Profile) ?? null);
+    setProfile(p);
   };
 
   useEffect(() => {
     let active = true;
-
     const syncUser = async (authUser: User | null) => {
       if (!active) return;
       setUser(authUser);
       if (authUser) await loadProfile(authUser);
-      else setProfile(null);
+      else { setProfile(null); setIsAdmin(false); }
       if (active) setLoading(false);
     };
-
     supabase.auth.getUser().then(({ data }) => syncUser(data.user)).catch(() => setLoading(false));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncUser(session?.user ?? null);
-    });
-
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
+    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => { void syncUser(session?.user ?? null); });
+    return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
 
-  const refreshProfile = async () => {
-    if (user) await loadProfile(user);
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const refreshProfile = async () => { if (user) await loadProfile(user); };
+  const signOut = async () => { await supabase.auth.signOut(); };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, profile, isAdmin, loading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -127,7 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => useContext(AuthContext);
 
-export function hasActiveSubscription(profile: Profile | null): boolean {
+export function hasActiveSubscription(profile: Profile | null, isAdmin?: boolean): boolean {
+  if (isAdmin) return true;
   if (!profile) return false;
   if (profile.plan === "none") return false;
   if (!profile.plan_expires_at) return false;
@@ -136,57 +126,26 @@ export function hasActiveSubscription(profile: Profile | null): boolean {
 
 export const PLANS = {
   basic: {
-    name: "Basic",
-    price: 220,
-    proposals: 3,
-    summaries: 3,
+    name: "Basic", price: 220, proposals: 3, summaries: 3,
     model: "google/gemini-2.5-flash-lite",
-    features: [
-      "3 proposals / contracts per day",
-      "3 bid summaries per day",
-      "Technical & financial proposals",
-      "Partnership proposal support",
-      "PDF & Word download",
-    ],
+    features: ["3 proposals / contracts per day","3 bid summaries per day","Technical & financial proposals","Partnership proposal support","PDF & Word download"],
   },
   pro: {
-    name: "Pro",
-    price: 500,
-    proposals: 6,
-    summaries: 10,
+    name: "Pro", price: 500, proposals: 6, summaries: 10,
     model: "google/gemini-2.5-flash",
-    features: [
-      "6 proposals / contracts per day",
-      "10 bid summaries per day",
-      "Technical, financial & partnership",
-      "Proposal Strength Checker",
-      "Header/template builder",
-      "PDF & Word download",
-    ],
+    features: ["6 proposals / contracts per day","10 bid summaries per day","Technical, financial & partnership","Proposal Strength Checker","Header/template builder","PDF & Word download"],
   },
   premium: {
-    name: "Premium",
-    price: 1500,
-    proposals: 14,
-    summaries: 999,
-    model: "openai/gpt-5.5",
-    tips: true,
-    features: [
-      "14 proposals / contracts per day",
-      "Unlimited bid summaries",
-      "Winning insider tips",
-      "Proposal Strength Checker + budget analysis",
-      "Premium templates & custom header builder",
-      "Priority AI (highest quality)",
-      "PDF & Word download",
-    ],
+    name: "Premium", price: 1500, proposals: 14, summaries: 999,
+    model: "openai/gpt-5.5", tips: true,
+    features: ["14 proposals / contracts per day","Unlimited bid summaries","Winning insider tips","Proposal Strength Checker + budget analysis","Premium templates & custom header builder","Priority AI (highest quality)","PDF & Word download"],
   },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
 
-export function planLimits(plan: string) {
+export function planLimits(plan: string, isAdmin?: boolean) {
+  if (isAdmin) return { proposals: 9999, summaries: 9999, model: "openai/gpt-5.5", tips: true };
   if (plan === "trial") return { proposals: 1, summaries: 1, model: "google/gemini-2.5-flash-lite", tips: false };
   return (PLANS as Record<string, { proposals: number; summaries: number; model: string; tips?: boolean }>)[plan] ?? { proposals: 0, summaries: 0, model: "", tips: false };
 }
-
